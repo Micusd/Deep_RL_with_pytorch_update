@@ -18,7 +18,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.was_real_done = True
         self.was_real_reset = False
 
-    def _step(self, action):
+    def step(self, action):
         obs, reward, done, info = self.env.step(action)
         self.was_real_done = done
         # check current lives, make loss of life terminal,
@@ -32,7 +32,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = lives
         return obs, reward, done, info
 
-    def _reset(self):
+    def reset(self):
         """Reset only when lives are exhausted.
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
@@ -57,7 +57,7 @@ class NoopResetEnv(gym.Wrapper):
         self.override_num_noops = None
         assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
 
-    def _reset(self):
+    def reset(self):
         """ Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset()
         if self.override_num_noops is not None:
@@ -80,7 +80,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         self._obs_buffer = deque(maxlen=2)
         self._skip = skip
 
-    def _step(self, action):
+    def step(self, action):
         total_reward = 0.0
         done = None
         for _ in range(self._skip):
@@ -94,7 +94,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
         return max_frame, total_reward, done, info
 
-    def _reset(self):
+    def reset(self):
         """Clear past frame buffer and init. to first obs. from inner env."""
         self._obs_buffer.clear()
         obs = self.env.reset()
@@ -108,7 +108,7 @@ class FireResetEnv(gym.Wrapper):
         assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
-    def _reset(self):
+    def reset(self):
         self.env.reset()
         obs, _, done, _ = self.env.step(1)
         if done:
@@ -123,7 +123,7 @@ class ProcessFrame84(gym.ObservationWrapper):
         super(ProcessFrame84, self).__init__(env)
         self.observation_space = spaces.Box(low=0, high=255, shape=(84, 84, 1))
 
-    def _observation(self, obs):
+    def observation(self, obs):
         return ProcessFrame84.process(obs)
 
     @staticmethod
@@ -149,12 +149,12 @@ class ImageToPyTorch(gym.ObservationWrapper):
         old_shape = self.observation_space.shape
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(old_shape[-1], old_shape[0], old_shape[1]))
 
-    def _observation(self, observation):
+    def observation(self, observation):
         return np.swapaxes(observation, 2, 0)
 
 
 class ClippedRewardsWrapper(gym.RewardWrapper):
-    def _reward(self, reward):
+    def reward(self, reward):
         """Change all the positive rewards to 1, negative to -1 and keep zero."""
         return np.sign(reward)
 
@@ -189,13 +189,13 @@ class FrameStack(gym.Wrapper):
         shp = env.observation_space.shape
         self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0]*k, shp[1], shp[2]))
 
-    def _reset(self):
+    def reset(self):
         ob = self.env.reset()
         for _ in range(self.k):
             self.frames.append(ob)
         return self._get_ob()
 
-    def _step(self, action):
+    def step(self, action):
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
         return self._get_ob(), reward, done, info
